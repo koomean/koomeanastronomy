@@ -104,16 +104,14 @@ input[type=range].mag-slider::-webkit-slider-thumb{-webkit-appearance:none;width
 
 <canvas id="sky"></canvas>
 
-<!-- Loading overlay -->
 <div class="loader" id="loader">
   <div class="loader-icon"><i class="fas fa-star"></i></div>
   <div class="loader-title">StarView</div>
-  <div class="loader-sub" id="loader-sub">กำลังโหลดแคตตาล็อกดาว…</div>
+  <div class="loader-sub" id="loader-sub">กำลังโหลดข้อมูลดวงดาว...</div>
   <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
   <div class="loader-count" id="loader-count">0 / ~119,000</div>
 </div>
 
-<!-- Top bar -->
 <div class="top-bar">
   <div class="logo"><i class="fas fa-star-and-crescent"></i><span>StarView</span></div>
   <div class="top-right">
@@ -124,13 +122,11 @@ input[type=range].mag-slider::-webkit-slider-thumb{-webkit-appearance:none;width
   </div>
 </div>
 
-<!-- Search -->
 <div class="search-wrap" id="search-wrap">
   <input class="search-input" id="search-input" placeholder="เช่น Sirius, Orion, Arcturus…" autocomplete="off">
   <div class="search-results" id="search-results"></div>
 </div>
 
-<!-- Star popup -->
 <div class="star-popup" id="star-popup">
   <div class="sp-name" id="sp-name"></div>
   <div class="sp-row"><span>Magnitude</span><span class="sp-val" id="sp-mag"></span></div>
@@ -141,7 +137,6 @@ input[type=range].mag-slider::-webkit-slider-thumb{-webkit-appearance:none;width
   <div class="sp-row"><span>Spectral</span><span class="sp-val" id="sp-spect"></span></div>
 </div>
 
-<!-- Bottom bar -->
 <div class="bottom-bar">
   <div class="time-display">
     <div class="clock" id="clock-display">--:--:--</div>
@@ -158,14 +153,12 @@ input[type=range].mag-slider::-webkit-slider-thumb{-webkit-appearance:none;width
   </div>
 </div>
 
-<!-- Magnitude slider -->
 <div class="mag-wrap">
   <div class="mag-label">Mag</div>
   <input type="range" class="mag-slider" id="mag-slider" min="1" max="7" step="0.5" value="6.5">
   <div class="mag-val" id="mag-val">6.5</div>
 </div>
 
-<!-- Legend -->
 <div class="legend">
   <div class="leg-item"><div class="leg-dot" style="background:#b8d4ff;width:10px;height:10px"></div>Blue</div>
   <div class="leg-item"><div class="leg-dot" style="background:#ddeeff;width:8px;height:8px"></div>Blue-white</div>
@@ -175,7 +168,6 @@ input[type=range].mag-slider::-webkit-slider-thumb{-webkit-appearance:none;width
   <div class="leg-item"><div class="leg-dot" style="background:#ff7055;width:4px;height:4px"></div>Red</div>
 </div>
 
-<!-- Location dialog -->
 <div class="loc-overlay" id="loc-overlay" style="display:none">
   <div class="loc-box">
     <h3><i class="fas fa-location-dot" style="margin-right:7px"></i>ตั้งค่าตำแหน่ง</h3>
@@ -191,617 +183,352 @@ input[type=range].mag-slider::-webkit-slider-thumb{-webkit-appearance:none;width
   </div>
 </div>
 
-<!-- Error toast -->
 <div class="toast" id="toast"></div>
 
-<!-- ════════════════════════════════════════════════════════════════
-     JAVASCRIPT
-════════════════════════════════════════════════════════════════ -->
 <script>
 'use strict';
 
-// ════════════════════════════════════════════════════════════════
-// § 1 · CONSTELLATION LINES  (Hipparcos ID pairs, Western culture)
-//   Source: Stellarium / IAU western constellation lines
-// ════════════════════════════════════════════════════════════════
-
-// Format: { id: 'Xxx', lines: [[hipA, hipB], ...], name: 'Full Name', lr: labelRA_h, ld: labelDec_deg }
+// Constellation Data
 const CONST_DATA = [
   {id:'And',name:'Andromeda',    lr:1.2, ld:37,  lines:[[677,5447],[5447,9640],[9640,14328],[677,3092],[3092,4436]]},
-  {id:'Aql',name:'Aquila',      lr:19.7,ld:4,   lines:[[97649,98036],[97649,97804],[97649,96468],[96468,93805]]},
-  {id:'Aqr',name:'Aquarius',    lr:22.5,ld:-11, lines:[[109074,106278],[106278,104459],[104459,102618],[102618,100345],[100345,102618]]},
-  {id:'Ari',name:'Aries',       lr:2.2, ld:22,  lines:[[9884,10064],[10064,8903],[9884,10670]]},
-  {id:'Aur',name:'Auriga',      lr:5.8, ld:44,  lines:[[24608,28380],[28380,25859],[25859,23015],[23015,24608],[28380,23453],[24608,21421]]},
-  {id:'Boo',name:'Boötes',      lr:14.5,ld:25,  lines:[[69673,71075],[71075,74666],[74666,72105],[72105,69673],[69673,67459],[67459,67927],[67927,69673]]},
-  {id:'CMa',name:'Canis Major', lr:6.9, ld:-22, lines:[[32349,31592],[32349,33347],[33347,33579],[33579,34444],[33579,33022],[32349,30122]]},
-  {id:'CMi',name:'Canis Minor', lr:7.7, ld:5,   lines:[[37279,36188]]},
-  {id:'Cap',name:'Capricornus', lr:21.0,ld:-18, lines:[[100345,102978],[102978,105881],[105881,107556],[107556,100345]]},
-  {id:'Car',name:'Carina',      lr:8.5, ld:-60, lines:[[30438,45238],[45238,52419],[52419,50371],[50371,46390],[46390,45556]]},
-  {id:'Cas',name:'Cassiopeia',  lr:1.5, ld:60,  lines:[[746,3179],[3179,4427],[4427,6686],[6686,8886]]},
-  {id:'Cen',name:'Centaurus',   lr:13.5,ld:-48, lines:[[71683,68702],[68702,61932],[61932,59316],[59316,55425],[55425,54061]]},
-  {id:'Cep',name:'Cepheus',     lr:22.0,ld:68,  lines:[[105199,109492],[109492,112724],[112724,105199],[109492,106032],[106032,102422]]},
-  {id:'Cet',name:'Cetus',       lr:1.7, ld:-8,  lines:[[3419,14135],[14135,12706],[12706,10826],[10826,8102],[8102,3419],[14135,12387]]},
-  {id:'CrB',name:'Corona Bor.', lr:15.6,ld:28,  lines:[[76267,75695],[75695,74785],[74785,76127],[76127,76267],[76267,78159]]},
-  {id:'Cru',name:'Crux',        lr:12.5,ld:-60, lines:[[60718,62434],[61084,60260]]},
-  {id:'Cyg',name:'Cygnus',      lr:20.5,ld:43,  lines:[[102098,100453],[100453,104732],[100453,107310],[100453,97165],[100453,95947],[107310,102488]]},
-  {id:'Del',name:'Delphinus',   lr:20.7,ld:13,  lines:[[101769,101958],[101958,102532],[102532,101421],[101421,101769],[101958,101421]]},
-  {id:'Dra',name:'Draco',       lr:17.0,ld:67,  lines:[[87585,85670],[85670,83895],[83895,78527],[78527,75458],[75458,68756],[68756,61281],[61281,56211],[56211,54539],[54539,56211],[87585,94376],[94376,95947]]},
-  {id:'Eri',name:'Eridanus',    lr:3.0, ld:-30, lines:[[7588,13847],[13847,18543],[18543,20535],[20535,23875],[23875,16537],[16537,18543]]},
-  {id:'Gem',name:'Gemini',      lr:7.2, ld:25,  lines:[[36850,37826],[36850,35550],[35550,34693],[34693,32246],[37826,35350],[35350,34045],[36850,34088],[34088,32246]]},
-  {id:'Gru',name:'Grus',        lr:22.4,ld:-45, lines:[[109268,112623],[112623,109268],[109268,107608]]},
-  {id:'Her',name:'Hercules',    lr:17.0,ld:30,  lines:[[80816,81693],[81693,84379],[84379,83207],[83207,80816],[84379,85112],[85112,86974],[86974,84379],[80816,78820],[78820,80170],[80170,80816]]},
-  {id:'Hya',name:'Hydra',       lr:10.5,ld:-15, lines:[[46390,43813],[43813,42313],[42313,42402],[42402,43109],[43109,43813],[43813,49402],[49402,52727],[52727,55084],[55084,57780]]},
-  {id:'Leo',name:'Leo',         lr:10.7,ld:17,  lines:[[49669,50583],[50583,50335],[50335,47908],[47908,46750],[49669,55434],[55434,57757],[57757,54879],[54879,49669],[50583,55434]]},
-  {id:'Lib',name:'Libra',       lr:15.0,ld:-14, lines:[[72622,76333],[76333,76600],[76600,72622],[72622,74785]]},
-  {id:'Lup',name:'Lupus',       lr:15.2,ld:-42, lines:[[76297,75141],[75141,73807],[73807,71860],[71860,71536]]},
-  {id:'Lyr',name:'Lyra',        lr:18.8,ld:36,  lines:[[91262,92420],[92420,93194],[93194,93903],[93903,92420],[91262,93903]]},
-  {id:'Oph',name:'Ophiuchus',   lr:17.2,ld:5,   lines:[[86032,84012],[84012,80883],[80883,86032],[84012,85755],[85755,86670],[86670,84012]]},
-  {id:'Ori',name:'Orion',       lr:5.6, ld:0,   lines:[[24436,25930],[25930,26311],[26311,26727],[26727,27366],[24436,27366],[25930,25336],[25336,27989],[27989,26311],[27989,26207],[25336,26207],[24436,22449],[22449,22509]]},
-  {id:'Pav',name:'Pavo',        lr:19.5,ld:-62, lines:[[100751,98110],[98110,95853],[95853,100751]]},
-  {id:'Peg',name:'Pegasus',     lr:22.5,ld:20,  lines:[[113963,113881],[113881,677],[677,1067],[1067,113963],[113963,107315],[107315,109074],[109074,113963]]},
-  {id:'Per',name:'Perseus',     lr:3.5, ld:45,  lines:[[15863,13268],[13268,14576],[14576,13254],[13254,14632],[15863,17448],[17448,18532],[18532,19343],[17448,16537]]},
-  {id:'PsA',name:'Piscis Aus.', lr:22.6,ld:-32, lines:[[113368,111954],[111954,113368]]},
-  {id:'Psc',name:'Pisces',      lr:1.0, ld:13,  lines:[[9487,8198],[8198,7097],[7097,5742],[5742,4906],[4906,3786],[116771,115738],[115738,113889],[113889,116203],[116203,116771]]},
-  {id:'Sco',name:'Scorpius',    lr:16.5,ld:-30, lines:[[80763,78401],[78401,78265],[80763,82545],[82545,84143],[84143,85927],[85927,85696],[84143,86228],[86228,87294],[87294,87585],[85927,86670]]},
-  {id:'Sgr',name:'Sagittarius', lr:18.5,ld:-28, lines:[[89642,89931],[89931,90496],[90496,93085],[93085,90185],[90185,89642],[93085,92855],[92855,89931],[89931,88635],[88635,90496]]},
-  {id:'Tau',name:'Taurus',      lr:4.5, ld:20,  lines:[[21421,20648],[20648,18724],[18724,17702],[21421,20889],[21421,20205],[20205,20648],[20205,18543]]},
-  {id:'TrA',name:'Tri. Aus.',   lr:15.8,ld:-65, lines:[[82273,74946],[74946,77952],[77952,82273]]},
-  {id:'UMa',name:'Ursa Major',  lr:11.5,ld:55,  lines:[[54061,53910],[53910,58001],[58001,59774],[59774,62956],[62956,65378],[65378,67301],[54061,48319],[48319,46733],[46733,46853],[46853,48319],[54061,55219]]},
-  {id:'UMi',name:'Ursa Minor',  lr:15.0,ld:78,  lines:[[11767,77055],[77055,79822],[79822,82080],[82080,85822],[85822,75097],[75097,72607],[72607,85822]]},
-  {id:'Vir',name:'Virgo',       lr:13.2,ld:-3,  lines:[[65474,61941],[61941,57380],[57380,59316],[59316,61941],[61941,63608],[63608,65474],[63608,64238]]},
+  {id:'Aql',name:'Aquila',       lr:19.7,ld:4,   lines:[[97649,98036],[97649,97804],[97649,96468],[96468,93805]]},
+  {id:'Aqr',name:'Aquarius',     lr:22.5,ld:-11, lines:[[109074,106278],[106278,104459],[104459,102618],[102618,100345],[100345,102618]]},
+  {id:'Ori',name:'Orion',        lr:5.6, ld:0,   lines:[[24436,25930],[25930,26311],[26311,26727],[26727,27366],[24436,27366],[25930,25336],[25336,27989],[27989,26311],[27989,26207],[25336,26207],[24436,22449],[22449,22509]]},
+  {id:'UMa',name:'Ursa Major',   lr:11.5,ld:55,  lines:[[54061,53910],[53910,58001],[58001,59774],[59774,62956],[62956,65378],[65378,67301],[54061,48319],[48319,46733],[46733,46853],[46853,48319],[54061,55219]]},
+  {id:'UMi',name:'Ursa Minor',   lr:15.0,ld:78,  lines:[[11767,77055],[77055,79822],[79822,82080],[82080,85822],[85822,75097],[75097,72607],[72607,85822]]},
+  {id:'Sco',name:'Scorpius',     lr:16.5,ld:-30, lines:[[80763,78401],[78401,78265],[80763,82545],[82545,84143],[84143,85927],[85927,85696],[84143,86228],[86228,87294],[87294,87585],[85927,86670]]},
+  {id:'Cyg',name:'Cygnus',       lr:20.5,ld:43,  lines:[[102098,100453],[100453,104732],[100453,107310],[100453,97165],[100453,95947],[107310,102488]]},
+  {id:'Cas',name:'Cassiopeia',   lr:1.5, ld:60,  lines:[[746,3179],[3179,4427],[4427,6686],[6686,8886]]},
+  {id:'Cru',name:'Crux',         lr:12.5,ld:-60, lines:[[60718,62434],[61084,60260]]}
 ];
 
-// HIP → constellation abbrev map (built at runtime from CONST_DATA)
-const hipToConst = {};
-CONST_DATA.forEach(c => c.lines.forEach(([a,b]) => { hipToConst[a]=c.id; hipToConst[b]=c.id; }));
-
-// HIP lookup for constellation lines rendering
-const hipPos = new Map(); // hip → computed {x,y} updated each frame
-
-// ════════════════════════════════════════════════════════════════
-// § 2 · STAR CATALOG  (loaded from HYG database)
-// ════════════════════════════════════════════════════════════════
-
-// Each star: [ra_h, dec_deg, mag, bv, name, con_abbrev, hip, spect]
+const hipPos = new Map();
 let STARS = [];
-
 const HYG_URL = 'https://raw.githubusercontent.com/astronexus/HYG-Database/master/hygdata_v3.csv';
-const CACHE_KEY    = 'starview-hyg-v3';
-const CACHE_VER    = 3;
-const CACHE_MAXAGE = 7 * 24 * 3600 * 1000; // 7 days
+const CACHE_KEY = 'starview-hyg-v3-idb';
+const CACHE_VER = 3;
+
+// ── IDB Wrapper (Replaces localStorage to fix limits) ──
+const db = {
+  open() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('StarViewData', 1);
+      request.onupgradeneeded = e => e.target.result.createObjectStore('cache');
+      request.onsuccess = e => resolve(e.target.result);
+      request.onerror = () => reject('IDB Error');
+    });
+  },
+  async get(key) {
+    const database = await this.open();
+    return new Promise(resolve => {
+      const tx = database.transaction('cache');
+      const store = tx.objectStore('cache');
+      const req = store.get(key);
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror = () => resolve(null);
+    });
+  },
+  async set(key, value) {
+    const database = await this.open();
+    return new Promise(resolve => {
+      const tx = database.transaction('cache', 'readwrite');
+      const store = tx.objectStore('cache');
+      store.put(value, key).onsuccess = resolve;
+    });
+  }
+};
 
 async function loadStars() {
-  // Try localStorage cache first
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (raw) {
-      const cached = JSON.parse(raw);
-      if (cached.ver === CACHE_VER && Date.now() - cached.ts < CACHE_MAXAGE) {
-        STARS = cached.data;
-        setLoaderSub(`ใช้ข้อมูลที่แคชไว้ (${STARS.length.toLocaleString()} ดาว)`);
-        setProgress(100);
-        return;
-      }
+    const cached = await db.get(CACHE_KEY);
+    if (cached && cached.ver === CACHE_VER) {
+      STARS = cached.data;
+      setLoaderSub(`ใช้ข้อมูลในเครื่อง (${STARS.length.toLocaleString()} ดาว)`);
+      setProgress(100);
+      return;
     }
-  } catch { /* ignore */ }
+  } catch(e) {}
 
-  // Fetch from GitHub
-  setLoaderSub('กำลังดาวน์โหลดจาก HYG Database…');
+  setLoaderSub('ดาวน์โหลดและประมวลผลข้อมูล (ครั้งแรกจะนานหน่อย)...');
   try {
     const resp = await fetch(HYG_URL);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-    const reader  = resp.body.getReader();
+    if (!resp.ok) throw new Error();
+    const reader = resp.body.getReader();
     const decoder = new TextDecoder();
-    const total   = parseInt(resp.headers.get('content-length') || '0', 10);
-    let   received = 0;
-    let   buffer   = '';
-    let   lineNum  = 0;
-    let   colMap   = null;  // column index map from header
-
+    const total = parseInt(resp.headers.get('content-length') || '36000000', 10);
+    
+    let received = 0;
+    let buffer = '';
+    let lineNum = 0;
+    let colMap = null;
     const stars = [];
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       received += value.byteLength;
-      buffer   += decoder.decode(value, { stream: true });
-
-      // Process all complete lines
+      buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete last chunk
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.trim()) continue;
         const cols = line.split(',');
-
         if (lineNum === 0) {
-          // Parse header to get column indices (robust against future format changes)
-          colMap = {};
-          cols.forEach((c, i) => { colMap[c.trim()] = i; });
-          lineNum++;
-          continue;
+          colMap = {}; cols.forEach((c, i) => colMap[c.trim()] = i);
+          lineNum++; continue;
         }
         lineNum++;
-
         const mag = parseFloat(cols[colMap['mag']]);
-        if (isNaN(mag) || mag > 7.0) continue; // skip dim & invalid
-
-        const hip   = parseInt(cols[colMap['hip']]) || 0;
-        const ra    = parseFloat(cols[colMap['ra']]);
-        const dec   = parseFloat(cols[colMap['dec']]);
+        if (isNaN(mag) || mag > 7.0) continue;
+        
+        const ra = parseFloat(cols[colMap['ra']]);
+        const dec = parseFloat(cols[colMap['dec']]);
         if (isNaN(ra) || isNaN(dec)) continue;
 
-        const bv    = parseFloat(cols[colMap['ci']])    || 0;
-        const name  = (cols[colMap['proper']] || '').trim();
-        const con   = (cols[colMap['con']]    || '').trim();
-        const spect = (cols[colMap['spect']]  || '').trim().slice(0, 4);
-
-        stars.push([ra, dec, mag, bv, name, con, hip, spect]);
+        stars.push([
+          ra, dec, mag,
+          parseFloat(cols[colMap['ci']]) || 0,
+          (cols[colMap['proper']] || '').trim(),
+          (cols[colMap['con']] || '').trim(),
+          parseInt(cols[colMap['hip']]) || 0,
+          (cols[colMap['spect']] || '').trim().slice(0, 4)
+        ]);
       }
-
-      // Progress
-      if (total > 0) {
-        setProgress(Math.round(received / total * 90));
-        setLoaderCount(`${stars.length.toLocaleString()} ดาว (${Math.round(received/1024)}KB)`);
-      } else {
-        setLoaderCount(`${stars.length.toLocaleString()} ดาว…`);
-      }
+      setProgress(Math.round(received / total * 90));
+      setLoaderCount(`${stars.length.toLocaleString()} ดาว (${Math.round(received/1024)}KB)`);
     }
 
-    // Handle remaining buffer
-    if (buffer.trim() && colMap) {
-      const cols = buffer.split(',');
-      const mag  = parseFloat(cols[colMap['mag']]);
-      if (!isNaN(mag) && mag <= 7.0) {
-        const ra   = parseFloat(cols[colMap['ra']]);
-        const dec  = parseFloat(cols[colMap['dec']]);
-        if (!isNaN(ra) && !isNaN(dec)) {
-          stars.push([ra, dec, mag,
-            parseFloat(cols[colMap['ci']]) || 0,
-            (cols[colMap['proper']] || '').trim(),
-            (cols[colMap['con']] || '').trim(),
-            parseInt(cols[colMap['hip']]) || 0,
-            (cols[colMap['spect']] || '').trim().slice(0,4)
-          ]);
-        }
-      }
-    }
-
-    setProgress(95);
-    setLoaderSub(`บันทึก ${stars.length.toLocaleString()} ดาวลง cache…`);
+    // Sort heavily ONCE during loading, not every frame
+    stars.sort((a, b) => b[2] - a[2]); 
     STARS = stars;
-
-    // Cache to localStorage
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ver: CACHE_VER, ts: Date.now(), data: stars }));
-    } catch (e) {
-      // localStorage full – still works without cache
-      console.warn('Cache write failed:', e.message);
-    }
-
+    setProgress(95);
+    setLoaderSub(`กำลังบันทึกแคชลงเบราว์เซอร์...`);
+    
+    await db.set(CACHE_KEY, { ver: CACHE_VER, ts: Date.now(), data: stars });
     setProgress(100);
 
   } catch (err) {
-    console.error('loadStars:', err);
-    showToast('โหลดข้อมูลไม่สำเร็จ – ตรวจสอบอินเทอร์เน็ต');
-    // Fall back to empty catalog – app still runs
-    STARS = [];
+    showToast('โหลดข้อมูลไม่สำเร็จ – โปรดตรวจสอบอินเทอร์เน็ต');
   }
 }
 
-// ════════════════════════════════════════════════════════════════
-// § 3 · LOADER UI
-// ════════════════════════════════════════════════════════════════
-
-const loaderEl   = document.getElementById('loader');
-const loaderSub  = document.getElementById('loader-sub');
+// ── Loader UI ──
+const loaderEl = document.getElementById('loader');
 const progressEl = document.getElementById('progress-fill');
-const countEl    = document.getElementById('loader-count');
+function setLoaderSub(t) { document.getElementById('loader-sub').textContent = t; }
+function setLoaderCount(t){ document.getElementById('loader-count').textContent = t; }
+function setProgress(p) { progressEl.style.width = p + '%'; }
+function hideLoader() { loaderEl.classList.add('hide'); setTimeout(() => loaderEl.style.display = 'none', 700); }
 
-function setLoaderSub(t)  { loaderSub.textContent  = t; }
-function setLoaderCount(t){ countEl.textContent     = t; }
-function setProgress(p)   { progressEl.style.width  = p + '%'; }
+// ── Math & App State ──
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const app = {
+  lat: 13.7563, lon: 100.5018, zoom: 1.0, viewAz: 0, viewAlt: 0,
+  magLimit: 6.5, showConst: true, showNames: true, showGrid: false, showMW: true,
+  drag: { active: false, x0: 0, y0: 0, az0: 0, alt0: 0 },
+  computed: [], highlightHip: -1
+};
 
-function hideLoader() {
-  loaderEl.classList.add('hide');
-  setTimeout(() => { loaderEl.style.display = 'none'; }, 700);
+const canvas = document.getElementById('sky');
+const ctx = canvas.getContext('2d', { alpha: false });
+let W, H, CX, CY, SCALE;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  CX = W / 2; CY = H / 2;
+  SCALE = Math.min(W, H) * 0.44 * app.zoom;
+  draw();
 }
-
-// ════════════════════════════════════════════════════════════════
-// § 4 · ASTRONOMY ENGINE
-// ════════════════════════════════════════════════════════════════
-
-const D2R = Math.PI / 180;
-const R2D = 180 / Math.PI;
+window.addEventListener('resize', resize);
 
 function julianDate(d) {
   const a = Math.floor((14 - d.getUTCMonth()) / 12);
   const y = d.getUTCFullYear() + 4800 - a;
   const m = d.getUTCMonth() + 1 + 12 * a - 3;
-  const jdn = d.getUTCDate()
-    + Math.floor((153 * m + 2) / 5)
-    + 365 * y + Math.floor(y / 4)
-    - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
-  return jdn + (d.getUTCHours() - 12) / 24
-       + d.getUTCMinutes() / 1440
-       + d.getUTCSeconds() / 86400;
+  const jdn = d.getUTCDate() + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+  return jdn + (d.getUTCHours() - 12) / 24 + d.getUTCMinutes() / 1440 + d.getUTCSeconds() / 86400;
 }
-
 function gmst(jd) {
   const T = (jd - 2451545) / 36525;
-  const θ = 280.46061837 + 360.98564736629 * (jd - 2451545)
-    + T * T * 0.000387933 - T * T * T / 38710000;
+  const θ = 280.46061837 + 360.98564736629 * (jd - 2451545) + T * T * 0.000387933 - T * T * T / 38710000;
   return ((θ % 360) + 360) % 360;
 }
-
 function toHorizon(raH, dec, lst, lat) {
   const ha = ((lst - raH * 15) % 360 + 360) % 360;
   const haR = ha * D2R, dR = dec * D2R, lR = lat * D2R;
   const sA = Math.sin(dR) * Math.sin(lR) + Math.cos(dR) * Math.cos(lR) * Math.cos(haR);
   const alt = Math.asin(Math.max(-1, Math.min(1, sA))) * R2D;
-  const cAz = (Math.sin(dR) - Math.sin(alt * D2R) * Math.sin(lR)) /
-              (Math.cos(alt * D2R) * Math.cos(lR));
+  const cAz = (Math.sin(dR) - Math.sin(alt * D2R) * Math.sin(lR)) / (Math.cos(alt * D2R) * Math.cos(lR));
   let az = Math.acos(Math.max(-1, Math.min(1, cAz))) * R2D;
   if (Math.sin(haR) > 0) az = 360 - az;
   return { alt, az };
 }
-
 function project(alt, az) {
   if (alt < -2) return null;
-  const r    = (90 - alt) / 90 * SCALE;
+  const r = (90 - alt) / 90 * SCALE;
   const adjAz = ((az + app.viewAz) % 360 + 360) % 360;
-  const azR  = adjAz * D2R;
-  return {
-    x: CX - r * Math.sin(azR),
-    y: CY - r * Math.cos(azR),
-  };
+  const azR = adjAz * D2R;
+  return { x: CX - r * Math.sin(azR), y: CY - r * Math.cos(azR) };
 }
-
-function magToRadius(mag) {
-  return Math.max(0.5, (3.5 - mag * 0.5) * Math.min(app.zoom, 2.5));
-}
-
 function bvToColor(bv) {
-  if (bv < -0.3) return '#9db8ff'; // hot O
-  if (bv < -0.1) return '#b8d4ff'; // B
-  if (bv <  0.1) return '#ddeeff'; // A
-  if (bv <  0.3) return '#ffffff'; // F
-  if (bv <  0.6) return '#fffacc'; // G yellow-white
-  if (bv <  1.0) return '#ffe080'; // K yellow
-  if (bv <  1.5) return '#ffbb66'; // K/M orange
-  return '#ff7055';                // M red
+  if (bv < -0.1) return '#b8d4ff'; if (bv < 0.1) return '#ddeeff';
+  if (bv < 0.3) return '#ffffff'; if (bv < 0.6) return '#fffacc';
+  if (bv < 1.0) return '#ffe080'; if (bv < 1.5) return '#ffbb66'; return '#ff7055';
 }
-
-// ════════════════════════════════════════════════════════════════
-// § 5 · APP STATE
-// ════════════════════════════════════════════════════════════════
-
-const app = {
-  lat: 13.7563, lon: 100.5018,
-  zoom: 1.0,
-  viewAz: 0, viewAlt: 0,
-  magLimit: 6.5,
-  showConst: true, showNames: true,
-  showGrid: false, showMW: true,
-  drag: { active: false, x0: 0, y0: 0, az0: 0, alt0: 0 },
-  computed: [],   // visible stars this frame
-  highlightHip: -1,
-};
-
-// ════════════════════════════════════════════════════════════════
-// § 6 · CANVAS
-// ════════════════════════════════════════════════════════════════
-
-const canvas = document.getElementById('sky');
-const ctx    = canvas.getContext('2d');
-let W, H, CX, CY, SCALE;
-
-function resize() {
-  W = canvas.width  = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  CX = W / 2; CY = H / 2;
-  SCALE = Math.min(W, H) * 0.44 * app.zoom;
-}
-window.addEventListener('resize', () => { resize(); draw(); });
-resize();
-
-// ════════════════════════════════════════════════════════════════
-// § 7 · DRAW
-// ════════════════════════════════════════════════════════════════
 
 function draw() {
   SCALE = Math.min(W, H) * 0.44 * app.zoom;
-  const now = new Date();
-  const jd  = julianDate(now);
+  const jd = julianDate(new Date());
   const lst = ((gmst(jd) + app.lon) % 360 + 360) % 360;
 
-  ctx.clearRect(0, 0, W, H);
-
-  // Sky dome
+  ctx.fillStyle = '#020408';
+  ctx.fillRect(0, 0, W, H);
   const sky = ctx.createRadialGradient(CX, CY, 0, CX, CY, SCALE * 1.1);
-  sky.addColorStop(0,   '#0b1028');
-  sky.addColorStop(0.6, '#060c1c');
-  sky.addColorStop(1,   '#020408');
-  ctx.beginPath();
-  ctx.arc(CX, CY, SCALE * 1.06, 0, Math.PI * 2);
-  ctx.fillStyle = sky;
-  ctx.fill();
+  sky.addColorStop(0, '#0b1028'); sky.addColorStop(0.6, '#060c1c'); sky.addColorStop(1, '#020408');
+  ctx.beginPath(); ctx.arc(CX, CY, SCALE * 1.06, 0, Math.PI * 2); ctx.fillStyle = sky; ctx.fill();
 
   if (app.showMW) drawMilkyWay();
   if (app.showGrid) drawAltAzGrid();
-  if (app.showConst) drawConstLines(lst);
 
-  // Compute star positions
   app.computed = [];
   hipPos.clear();
 
   for (let i = 0; i < STARS.length; i++) {
-    const [raH, dec, mag, bv, name, con, hip, spect] = STARS[i];
-    if (mag > app.magLimit) continue;
-
-    const { alt, az } = toHorizon(raH, dec, lst, app.lat);
-    const adjAlt = alt + app.viewAlt;
-    const pos    = project(adjAlt, az);
+    const s = STARS[i];
+    if (s[2] > app.magLimit) continue;
+    const { alt, az } = toHorizon(s[0], s[1], lst, app.lat);
+    const pos = project(alt + app.viewAlt, az);
     if (!pos) continue;
 
-    // Store HIP position for constellation lines
-    if (hip) hipPos.set(hip, pos);
-
-    app.computed.push({ idx: i, x: pos.x, y: pos.y, alt, az, mag, bv, name, con, hip, spect });
+    if (s[6]) hipPos.set(s[6], pos);
+    app.computed.push({ idx: i, x: pos.x, y: pos.y, alt, az, mag: s[2], bv: s[3], name: s[4], con: s[5], hip: s[6], spect: s[7] });
   }
 
-  // Sort: dim first, bright on top
-  app.computed.sort((a, b) => b.mag - a.mag);
+  // Draw lines under the stars
+  if (app.showConst) drawConstLines();
 
-  // Draw stars
+  // Draw Stars (Pre-sorted bright on top)
   for (const s of app.computed) {
-    const r     = magToRadius(s.mag);
-    const color = bvToColor(s.bv);
-    const isHl  = s.hip === app.highlightHip && s.hip > 0;
-
-    // Glow for bright stars (mag < 2.5)
-    if (s.mag < 2.5) {
-      const gr = r * (5 - s.mag);
-      const g  = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, gr);
-      g.addColorStop(0, colorWithAlpha(color, 0.35));
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, gr, 0, Math.PI * 2);
-      ctx.fillStyle = g;
-      ctx.fill();
-    }
-
-    // Highlight ring
-    if (isHl) {
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, r * 4 + 4, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(126,200,227,.75)';
-      ctx.lineWidth   = 1.5;
-      ctx.stroke();
-    }
-
-    // Star disc
+    const r = Math.max(0.5, (3.5 - s.mag * 0.5) * Math.min(app.zoom, 2.5));
+    const isHl = s.hip === app.highlightHip && s.hip > 0;
+    
     ctx.beginPath();
     ctx.arc(s.x, s.y, Math.max(0.4, r), 0, Math.PI * 2);
-    ctx.fillStyle = isHl ? '#7ec8e3' : color;
+    ctx.fillStyle = isHl ? '#7ec8e3' : bvToColor(s.bv);
     ctx.fill();
 
-    // Name label
     if (app.showNames && s.name && s.mag <= 2.0) {
-      ctx.font      = `${Math.round(10 + (2 - s.mag) * 1.5)}px -apple-system,sans-serif`;
+      ctx.font = `${Math.round(10 + (2 - s.mag) * 1.5)}px sans-serif`;
       ctx.fillStyle = 'rgba(190,215,255,0.7)';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
       ctx.fillText(s.name, s.x + r + 4, s.y + 1);
     }
   }
 
-  // Constellation labels
   if (app.showConst) drawConstLabels(lst);
-
   drawHorizon();
   updateHUD();
 }
 
-function colorWithAlpha(hex, a) {
-  if (!hex.startsWith('#')) return `rgba(200,220,255,${a})`;
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
-}
-
-// ── Milky Way ──
 function drawMilkyWay() {
-  ctx.save();
-  ctx.globalAlpha = 0.08;
-  // Draw as elliptical band at ~60° tilt
-  const g = ctx.createLinearGradient(CX - SCALE * 0.4, CY - SCALE, CX + SCALE * 0.4, CY + SCALE);
-  g.addColorStop(0,   'rgba(160,185,255,0)');
-  g.addColorStop(0.4, 'rgba(160,185,255,1)');
-  g.addColorStop(0.6, 'rgba(160,185,255,1)');
-  g.addColorStop(1,   'rgba(160,185,255,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.ellipse(CX, CY, SCALE * 0.22, SCALE * 1.02, Math.PI * 0.32, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.save(); ctx.globalAlpha = 0.08;
+  const g = ctx.createLinearGradient(CX - SCALE*0.4, CY - SCALE, CX + SCALE*0.4, CY + SCALE);
+  g.addColorStop(0, 'rgba(160,185,255,0)'); g.addColorStop(0.5, 'rgba(160,185,255,1)'); g.addColorStop(1, 'rgba(160,185,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(CX, CY, SCALE*0.22, SCALE*1.02, Math.PI*0.32, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
-// ── Alt/Az Grid ──
 function drawAltAzGrid() {
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,.06)';
-  ctx.lineWidth   = 0.6;
-  for (let alt = 0; alt < 90; alt += 30) {
-    const r = (90 - alt) / 90 * SCALE;
-    ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2); ctx.stroke();
-  }
+  ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 0.6;
+  for (let alt = 0; alt < 90; alt += 30) { ctx.beginPath(); ctx.arc(CX, CY, (90-alt)/90*SCALE, 0, Math.PI*2); ctx.stroke(); }
   for (let az = 0; az < 360; az += 45) {
-    const r   = SCALE;
-    const adjAz = ((az + app.viewAz) % 360 + 360) % 360;
-    const azR = adjAz * D2R;
-    ctx.beginPath();
-    ctx.moveTo(CX, CY);
-    ctx.lineTo(CX - r * Math.sin(azR), CY - r * Math.cos(azR));
-    ctx.stroke();
+    const azR = ((az + app.viewAz)%360+360)%360 * D2R;
+    ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(CX - SCALE*Math.sin(azR), CY - SCALE*Math.cos(azR)); ctx.stroke();
   }
-  ctx.restore();
 }
 
-// ── Constellation lines ──
-function drawConstLines(lst) {
-  // First pass: build positions for all HIP IDs needed by lines
-  // (hipPos is populated in the star loop, but we need lines even for dim stars)
-  // Build a quick hip → ra,dec map once at load (built below after STARS loads)
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(80,140,220,.25)';
-  ctx.lineWidth   = 0.85;
-
-  CONST_DATA.forEach(c => {
-    c.lines.forEach(([a, b]) => {
-      const pa = hipPos.get(a);
-      const pb = hipPos.get(b);
-      if (!pa || !pb) return;
-      const dist = Math.hypot(pa.x - pb.x, pa.y - pb.y);
-      if (dist > SCALE * 0.95) return; // skip wrap-around artifacts
-      ctx.beginPath();
-      ctx.moveTo(pa.x, pa.y);
-      ctx.lineTo(pb.x, pb.y);
-      ctx.stroke();
-    });
-  });
-  ctx.restore();
+function drawConstLines() {
+  ctx.strokeStyle = 'rgba(80,140,220,.25)'; ctx.lineWidth = 0.85;
+  CONST_DATA.forEach(c => c.lines.forEach(([a, b]) => {
+    const pa = hipPos.get(a), pb = hipPos.get(b);
+    if (pa && pb && Math.hypot(pa.x - pb.x, pa.y - pb.y) < SCALE * 0.95) {
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+    }
+  }));
 }
 
-// ── Constellation labels ──
 function drawConstLabels(lst) {
-  ctx.save();
-  ctx.font      = '10px -apple-system,sans-serif';
-  ctx.fillStyle = 'rgba(90,145,220,.42)';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.font = '10px sans-serif'; ctx.fillStyle = 'rgba(90,145,220,.42)'; ctx.textAlign = 'center';
   CONST_DATA.forEach(c => {
-    const { alt, az } = toHorizon(c.lr, c.ld, ((gmst(julianDate(new Date())) + app.lon) % 360 + 360) % 360, app.lat);
-    const adjAlt = alt + app.viewAlt;
-    const pos = project(adjAlt, az);
-    if (!pos) return;
-    ctx.fillText(c.name, pos.x, pos.y);
+    const pos = project(toHorizon(c.lr, c.ld, lst, app.lat).alt + app.viewAlt, toHorizon(c.lr, c.ld, lst, app.lat).az);
+    if (pos) ctx.fillText(c.name, pos.x, pos.y);
   });
-  ctx.restore();
 }
 
-// ── Horizon ──
 function drawHorizon() {
-  ctx.save();
-  ctx.strokeStyle = 'rgba(80,150,220,.45)';
-  ctx.lineWidth   = 1.5;
-  ctx.beginPath();
-  ctx.arc(CX, CY, SCALE, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Cardinal labels
+  ctx.strokeStyle = 'rgba(80,150,220,.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(CX, CY, SCALE, 0, Math.PI*2); ctx.stroke();
   const dirs = [['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]];
   dirs.forEach(([lbl, az]) => {
-    const adjAz = ((az + app.viewAz) % 360 + 360) % 360;
-    const r = SCALE + 14;
-    const x = CX - r * Math.sin(adjAz * D2R);
-    const y = CY - r * Math.cos(adjAz * D2R);
-    ctx.font      = lbl.length === 1 ? 'bold 13px -apple-system,sans-serif' : '10px -apple-system,sans-serif';
-    ctx.fillStyle = lbl.length === 1 ? 'rgba(126,200,227,.85)' : 'rgba(126,200,227,.42)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(lbl, x, y);
+    const azR = ((az + app.viewAz)%360+360)%360 * D2R;
+    ctx.font = lbl.length===1 ? 'bold 13px sans-serif' : '10px sans-serif';
+    ctx.fillStyle = lbl.length===1 ? 'rgba(126,200,227,.85)' : 'rgba(126,200,227,.42)';
+    ctx.fillText(lbl, CX - (SCALE+14)*Math.sin(azR), CY - (SCALE+14)*Math.cos(azR));
   });
-  ctx.restore();
 }
 
-// ── HUD ──
 function updateHUD() {
   const now = new Date();
-  document.getElementById('clock-display').textContent =
-    now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  document.getElementById('date-loc').textContent =
-    `${now.toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' })}  ·  ${app.lat.toFixed(2)}°N ${app.lon.toFixed(2)}°E`;
-  document.getElementById('star-count').textContent =
-    `${app.computed.length.toLocaleString()} ดาวมองเห็น`;
+  document.getElementById('clock-display').textContent = now.toLocaleTimeString('th-TH');
+  document.getElementById('date-loc').textContent = `${now.toLocaleDateString('th-TH')} · ${app.lat.toFixed(2)}°N ${app.lon.toFixed(2)}°E`;
+  document.getElementById('star-count').textContent = `${app.computed.length.toLocaleString()} ดาวมองเห็น`;
 }
 
-// ════════════════════════════════════════════════════════════════
-// § 8 · MAIN LOOP
-// ════════════════════════════════════════════════════════════════
-
+// ── Event Listeners ──
 let lastSec = -1;
 function loop() {
   const s = Math.floor(Date.now() / 1000);
-  if (s !== lastSec) { lastSec = s; draw(); }
+  if (s !== lastSec && !app.drag.active) { lastSec = s; draw(); }
   requestAnimationFrame(loop);
 }
 
-// ════════════════════════════════════════════════════════════════
-// § 9 · INPUT — mouse / touch / wheel
-// ════════════════════════════════════════════════════════════════
-
-canvas.addEventListener('mousedown', e => {
-  app.drag = { active:true, x0:e.clientX, y0:e.clientY, az0:app.viewAz, alt0:app.viewAlt };
-  canvas.classList.add('dragging');
-});
+canvas.addEventListener('mousedown', e => { app.drag = { active:true, x0:e.clientX, y0:e.clientY, az0:app.viewAz, alt0:app.viewAlt }; canvas.classList.add('dragging'); });
 canvas.addEventListener('mousemove', e => {
   if (!app.drag.active) return;
-  const deg = 90 / SCALE;
-  app.viewAz  = app.drag.az0  - (e.clientX - app.drag.x0) * deg;
-  app.viewAlt = Math.max(-30, Math.min(60, app.drag.alt0 + (e.clientY - app.drag.y0) * deg));
+  app.viewAz = app.drag.az0 - (e.clientX - app.drag.x0) * (90/SCALE);
+  app.viewAlt = Math.max(-30, Math.min(60, app.drag.alt0 + (e.clientY - app.drag.y0) * (90/SCALE)));
   draw();
 });
-const stopDrag = () => { app.drag.active = false; canvas.classList.remove('dragging'); };
-canvas.addEventListener('mouseup', stopDrag);
-canvas.addEventListener('mouseleave', stopDrag);
+canvas.addEventListener('mouseup', () => { app.drag.active = false; canvas.classList.remove('dragging'); });
+canvas.addEventListener('mouseleave', () => { app.drag.active = false; canvas.classList.remove('dragging'); });
+canvas.addEventListener('wheel', e => { e.preventDefault(); app.zoom = Math.max(0.4, Math.min(10, app.zoom * (e.deltaY < 0 ? 1.1 : 0.91))); draw(); }, { passive: false });
 
-canvas.addEventListener('wheel', e => {
-  e.preventDefault();
-  app.zoom = Math.max(0.4, Math.min(10, app.zoom * (e.deltaY < 0 ? 1.1 : 0.91)));
-  draw();
-}, { passive: false });
-
-// Touch
-let lastPinchDist = 0;
+let lastDist = 0;
 canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (e.touches.length === 1) {
-    app.drag = { active:true, x0:e.touches[0].clientX, y0:e.touches[0].clientY, az0:app.viewAz, alt0:app.viewAlt };
-  } else if (e.touches.length === 2) {
-    lastPinchDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
-  }
+  if(e.touches.length === 1) app.drag = { active:true, x0:e.touches[0].clientX, y0:e.touches[0].clientY, az0:app.viewAz, alt0:app.viewAlt };
+  else lastDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
 }, { passive:false });
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
-  if (e.touches.length === 1 && app.drag.active) {
-    const deg = 90 / SCALE;
-    app.viewAz  = app.drag.az0  - (e.touches[0].clientX - app.drag.x0) * deg;
-    app.viewAlt = Math.max(-30, Math.min(60, app.drag.alt0 + (e.touches[0].clientY - app.drag.y0) * deg));
-    draw();
-  } else if (e.touches.length === 2) {
+  if(e.touches.length === 1 && app.drag.active) {
+    app.viewAz = app.drag.az0 - (e.touches[0].clientX - app.drag.x0) * (90/SCALE);
+    app.viewAlt = Math.max(-30, Math.min(60, app.drag.alt0 + (e.touches[0].clientY - app.drag.y0) * (90/SCALE)));
+  } else if(e.touches.length === 2) {
     const dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
-    if (lastPinchDist > 0) app.zoom = Math.max(0.4, Math.min(10, app.zoom * dist / lastPinchDist));
-    lastPinchDist = dist;
-    draw();
+    if(lastDist > 0) app.zoom = Math.max(0.4, Math.min(10, app.zoom * dist / lastDist));
+    lastDist = dist;
   }
+  draw();
 }, { passive:false });
-canvas.addEventListener('touchend', () => { app.drag.active = false; lastPinchDist = 0; });
+canvas.addEventListener('touchend', () => { app.drag.active = false; lastDist = 0; });
 
-// Click → select star
-let clickTimer = null;
+let clickTimer;
 canvas.addEventListener('click', e => {
   clearTimeout(clickTimer);
   clickTimer = setTimeout(() => {
-    const mx = e.clientX, my = e.clientY;
     let best = null, bestD = 22;
-    app.computed.forEach(s => {
-      const d = Math.hypot(s.x - mx, s.y - my);
-      if (d < bestD) { bestD = d; best = s; }
-    });
-    if (best) showStarPopup(best, mx, my);
-    else      hideStarPopup();
+    app.computed.forEach(s => { const d = Math.hypot(s.x - e.clientX, s.y - e.clientY); if(d < bestD) { bestD = d; best = s; }});
+    best ? showStarPopup(best, e.clientX, e.clientY) : hideStarPopup();
   }, 50);
 });
 
@@ -809,209 +536,59 @@ function showStarPopup(s, mx, my) {
   app.highlightHip = s.hip;
   const el = document.getElementById('star-popup');
   document.getElementById('sp-name').textContent = s.name || `HIP ${s.hip}`;
-  document.getElementById('sp-mag').textContent  = s.mag.toFixed(2);
-  document.getElementById('sp-alt').textContent  = s.alt.toFixed(2) + '°';
-  document.getElementById('sp-az').textContent   = s.az.toFixed(2) + '°';
-  document.getElementById('sp-radec').textContent= `${STARS[s.idx][0].toFixed(3)}h  ${STARS[s.idx][1].toFixed(2)}°`;
-  document.getElementById('sp-con').textContent  = s.con || '—';
-  document.getElementById('sp-spect').textContent= s.spect || '—';
-
-  const pw = 215, ph = 160;
-  let px = mx + 14, py = my - ph / 2;
-  if (px + pw > W - 10) px = mx - pw - 14;
-  if (py < 60) py = 60;
-  if (py + ph > H - 70) py = H - 70 - ph;
-  el.style.left = px + 'px';
-  el.style.top  = py + 'px';
-  el.classList.add('show');
+  document.getElementById('sp-mag').textContent = s.mag.toFixed(2);
+  document.getElementById('sp-alt').textContent = s.alt.toFixed(2) + '°';
+  document.getElementById('sp-az').textContent = s.az.toFixed(2) + '°';
+  document.getElementById('sp-radec').textContent = `${STARS[s.idx][0].toFixed(3)}h  ${STARS[s.idx][1].toFixed(2)}°`;
+  document.getElementById('sp-con').textContent = s.con || '—';
+  document.getElementById('sp-spect').textContent = s.spect || '—';
+  
+  let px = mx + 14, py = Math.max(60, Math.min(my - 80, H - 230));
+  if(px + 215 > W - 10) px = mx - 229;
+  el.style.left = px + 'px'; el.style.top = py + 'px'; el.classList.add('show');
   draw();
 }
-function hideStarPopup() {
-  app.highlightHip = -1;
-  document.getElementById('star-popup').classList.remove('show');
-  draw();
-}
+function hideStarPopup() { app.highlightHip = -1; document.getElementById('star-popup').classList.remove('show'); draw(); }
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
 
-// ════════════════════════════════════════════════════════════════
-// § 10 · CONTROLS
-// ════════════════════════════════════════════════════════════════
-
-function toggleCtrl(id, key) {
-  app[key] = !app[key];
-  document.getElementById(id).classList.toggle('active', app[key]);
-  draw();
-}
-
-document.getElementById('btn-const').addEventListener('click', () => toggleCtrl('btn-const', 'showConst'));
-document.getElementById('btn-names').addEventListener('click', () => toggleCtrl('btn-names', 'showNames'));
-document.getElementById('btn-grid').addEventListener('click',  () => toggleCtrl('btn-grid',  'showGrid'));
-document.getElementById('btn-mw').addEventListener('click',    () => toggleCtrl('btn-mw',    'showMW'));
-document.getElementById('btn-now').addEventListener('click', () => {
-  app.viewAz = 0; app.viewAlt = 0; app.zoom = 1.0; draw();
-});
-document.getElementById('btn-loc').addEventListener('click', () => {
-  document.getElementById('inp-lat').value = app.lat.toFixed(4);
-  document.getElementById('inp-lon').value = app.lon.toFixed(4);
-  document.getElementById('loc-overlay').style.display = 'flex';
-});
-document.getElementById('btn-save-loc').addEventListener('click', () => {
-  const lat = parseFloat(document.getElementById('inp-lat').value);
-  const lon = parseFloat(document.getElementById('inp-lon').value);
-  if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-    app.lat = lat; app.lon = lon;
-    document.getElementById('loc-overlay').style.display = 'none';
-    draw();
-  }
-});
-document.getElementById('btn-gps').addEventListener('click', () => {
-  const btn = document.getElementById('btn-gps');
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:5px"></i>ตรวจจับ…';
-  btn.disabled = true;
-  navigator.geolocation?.getCurrentPosition(pos => {
-    document.getElementById('inp-lat').value = pos.coords.latitude.toFixed(4);
-    document.getElementById('inp-lon').value = pos.coords.longitude.toFixed(4);
-    btn.innerHTML = '<i class="fas fa-check" style="margin-right:5px"></i>พบตำแหน่ง';
-    btn.disabled = false;
-  }, () => {
-    btn.innerHTML = '<i class="fas fa-crosshairs" style="margin-right:5px"></i>ตรวจจับ GPS';
-    btn.disabled = false;
-    showToast('ไม่สามารถตรวจจับ GPS ได้');
+// UI Controls
+['btn-const','btn-names','btn-grid','btn-mw'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    const k = id.replace('btn-',''); const prop = 'show' + k.charAt(0).toUpperCase() + k.slice(1);
+    app[prop] = !app[prop]; e.currentTarget.classList.toggle('active', app[prop]); draw();
   });
 });
-document.getElementById('loc-overlay').addEventListener('click', e => {
-  if (e.target.id === 'loc-overlay')
-    document.getElementById('loc-overlay').style.display = 'none';
+document.getElementById('btn-now').addEventListener('click', () => { app.viewAz = 0; app.viewAlt = 0; app.zoom = 1.0; draw(); });
+document.getElementById('mag-slider').addEventListener('input', e => { app.magLimit = parseFloat(e.target.value); document.getElementById('mag-val').textContent = app.magLimit.toFixed(1); draw(); });
+
+// Search Logic
+const swrap = document.getElementById('search-wrap'), sres = document.getElementById('search-results');
+document.getElementById('search-toggle').addEventListener('click', () => { if(swrap.classList.toggle('show')) document.getElementById('search-input').focus(); else sres.innerHTML=''; });
+document.getElementById('search-input').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase(); sres.innerHTML = '';
+  if(q.length < 1) return;
+  const hits = STARS.filter(s => (s[4]&&s[4].toLowerCase().includes(q)) || (s[5]&&s[5].toLowerCase()===q) || (s[6]&&String(s[6])===q)).slice(0, 10);
+  hits.forEach(s => {
+    const div = document.createElement('div'); div.className = 'sr-item';
+    div.innerHTML = `<span class="sr-item-name">${s[4] || 'HIP '+s[6]}</span><span class="sr-item-meta">mag ${s[2].toFixed(2)} ${s[5]}</span>`;
+    div.onclick = () => {
+      const found = app.computed.find(c => c.hip === s[6]);
+      found ? showStarPopup(found, found.x, found.y) : showToast('ดาวดวงนี้อยู่ใต้ขอบฟ้า');
+      swrap.classList.remove('show');
+    };
+    sres.appendChild(div);
+  });
 });
 
-// Magnitude slider
-const magSlider = document.getElementById('mag-slider');
-const magValEl  = document.getElementById('mag-val');
-magSlider.addEventListener('input', () => {
-  app.magLimit = parseFloat(magSlider.value);
-  magValEl.textContent = app.magLimit.toFixed(1);
-  draw();
-});
-
-// ════════════════════════════════════════════════════════════════
-// § 11 · SEARCH
-// ════════════════════════════════════════════════════════════════
-
-const searchWrap   = document.getElementById('search-wrap');
-const searchInput  = document.getElementById('search-input');
-const searchResults= document.getElementById('search-results');
-
-document.getElementById('search-toggle').addEventListener('click', () => {
-  const show = searchWrap.classList.toggle('show');
-  if (show) searchInput.focus();
-  else searchResults.innerHTML = '';
-});
-
-let searchTimer = null;
-searchInput.addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    const q = searchInput.value.trim().toLowerCase();
-    searchResults.innerHTML = '';
-    if (!q || q.length < 1) return;
-
-    const hits = [];
-    for (const s of STARS) {
-      const [,, mag,,,, hip, , ] = s;
-      const name = s[4];
-      const con  = s[5];
-      if ((name && name.toLowerCase().includes(q)) ||
-          (con && con.toLowerCase() === q) ||
-          (hip && String(hip) === q)) {
-        hits.push(s);
-        if (hits.length >= 10) break;
-      }
-    }
-    hits.sort((a, b) => a[2] - b[2]);
-
-    if (!hits.length) {
-      const empty = document.createElement('div');
-      empty.className = 'sr-item';
-      empty.style.color = 'rgba(255,255,255,.35)';
-      empty.style.fontSize = '.8rem';
-      empty.textContent = 'ไม่พบดาวที่ตรงกัน';
-      searchResults.appendChild(empty);
-      return;
-    }
-
-    hits.forEach(s => {
-      const item = document.createElement('div');
-      item.className = 'sr-item';
-      const nm = document.createElement('span');
-      nm.className   = 'sr-item-name';
-      nm.textContent = s[4] || `HIP ${s[6]}`;
-      const mt = document.createElement('span');
-      mt.className   = 'sr-item-meta';
-      mt.textContent = `mag ${s[2].toFixed(2)}  ${s[5] || ''}`;
-      item.appendChild(nm);
-      item.appendChild(mt);
-      item.addEventListener('click', () => {
-        // Find in computed list
-        const found = app.computed.find(c => c.hip === s[6] && s[6] > 0);
-        if (found) {
-          showStarPopup(found, found.x, found.y);
-        } else {
-          showToast(`${s[4] || 'ดาวนี้'} อยู่ใต้ขอบฟ้าในขณะนี้`);
-        }
-        searchWrap.classList.remove('show');
-        searchResults.innerHTML = '';
-        searchInput.value = '';
-      });
-      searchResults.appendChild(item);
-    });
-  }, 200);
-});
-
-document.addEventListener('click', e => {
-  if (!searchWrap.contains(e.target) && !document.getElementById('search-toggle').contains(e.target)) {
-    searchWrap.classList.remove('show');
-  }
-});
-
-// ════════════════════════════════════════════════════════════════
-// § 12 · TOAST
-// ════════════════════════════════════════════════════════════════
-
-let toastTimer = null;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
-}
-
-// ════════════════════════════════════════════════════════════════
-// § 13 · INIT
-// ════════════════════════════════════════════════════════════════
-
+// Init
 (async () => {
-  // Try GPS silently
-  navigator.geolocation?.getCurrentPosition(p => {
-    app.lat = p.coords.latitude;
-    app.lon = p.coords.longitude;
-  }, () => {});
-
+  resize();
+  navigator.geolocation?.getCurrentPosition(p => { app.lat = p.coords.latitude; app.lon = p.coords.longitude; }, () => {});
   await loadStars();
-
-  setLoaderSub('กำลังเรนเดอร์ท้องฟ้า…');
-  await new Promise(r => setTimeout(r, 200));
-
   hideLoader();
-  document.getElementById('star-count').textContent = `${STARS.length.toLocaleString()} ดาวในแคตตาล็อก`;
-
-  if (STARS.length === 0) {
-    showToast('ไม่มีข้อมูลดาว – กรุณาตรวจสอบอินเทอร์เน็ต');
-  }
-
   draw();
   requestAnimationFrame(loop);
 })();
-
 </script>
 </body>
 </html>
